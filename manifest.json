@@ -1,0 +1,41 @@
+{
+    "manifest_version": 2,
+    "name": "Subreg.cz improve UI",
+    "description": "Extension for improve IU for better UX on website Subreg.cz (https://subreg.cz/)",
+    "version": "1.0.0",
+    "permissions": [
+        "storage"
+    ],
+    "author": "Jakub Bouček",
+    "homepage_url": "https://github.com/jakubboucek/subreg-cz-improve-ui",
+    "short_name": "Improve subreg.cz",
+    "icons": {
+        "16": "subreg_16.png",
+        "48": "subreg_48.png",
+        "128": "subreg_128.png",
+        "256": "subreg_256.png"
+    },
+    "browser_action": {
+        "default_icon": {
+            "16": "subreg_16.png",
+            "48": "subreg_48.png",
+            "128": "subreg_128.png",
+            "256": "subreg_256.png"
+        },
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://subreg.cz/*"
+            ],
+            "css": [
+                "subreg.css"
+            ],
+            "js": [
+                "subreg.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
+}

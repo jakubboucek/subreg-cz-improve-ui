@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Subreg.cz improve UI</title>
+    <style>
+        h1 {
+            font-size: 17px;
+            margin-top: 4px;
+            text-align: left;
+        }
+
+        h1, .form-field {
+            white-space: nowrap;
+        }
+        .form-field {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+    <script src="popup.js"></script>
+</head>
+<body>
+<h1>Subreg.cz improve UI</h1>
+<div class="form-field">
+    <input type="checkbox" id="preferAdminLogin" class="auto-option">
+    <label for="preferAdminLogin">Preferuji přihlášení Admin účtem (reseller)</label>
+</div>
+<div class="form-field">
+    <label for="loginAutofocus">Autofocus (přihlášení):</label>
+    <select id="loginAutofocus" class="auto-select">
+        <option value="admin">Admin (pouze přihlašování admin účtem)</option>
+        <option value="login" selected>Login</option>
+        <option value="password">Heslo</option>
+    </select>
+</div>
+</body>
+</html>
