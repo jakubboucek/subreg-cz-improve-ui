@@ -9,4 +9,5 @@ Install from Chrome Web Store: **Subreg.cz improve UI** (currently in-progress)
   - Autofocus
   - Required fields (no more accidently submit unfilled form)
   - Allow preferring Reseller access first
-  - 
+  - Support for password keychains with admin#username login format (sami like at API)
+  

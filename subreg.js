@@ -103,5 +103,21 @@ if (loginPopup) {
     if (loginPopup.style.display !== 'none') {
         focusForm();
     }
+
+    // Admin login via admin#user login
+    loginPopup.querySelector('#user-tab').addEventListener('submit', (event) =>{
+        const login = loginPopup.querySelector('#login').value;
+        const match = /^(?<admin>.+)#(?<login>.+)$/.exec(login);
+        if(match === null) {
+            return;
+        }
+
+        event.preventDefault();
+
+        loginPopup.querySelector('#sk_reseller').value = match.groups.admin;
+        loginPopup.querySelector('#sk_user').value = match.groups.login;
+        loginPopup.querySelector('#sk_password').value = loginPopup.querySelector('#heslo').value;
+        loginPopup.querySelector('#admin-tab input[type="submit"], #admin-tab button').click();
+    });
 }
 
