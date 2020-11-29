@@ -41,13 +41,9 @@ if (loginPopup) {
 
     loginPopup.querySelectorAll('input[type="text"], input[type="password"]').forEach((element) => {
         element.setAttribute('required', '');
-
-        // Remove stupid event: this.value='';
-        element.removeAttribute('onclick');
     });
 
     loginPopup.querySelectorAll('#login , #sk_reseller').forEach((element) => {
-        // currently unable to apply for #sk_user - chrome is filling nonsense
         element.setAttribute('autocomplete', 'username');
     });
 
