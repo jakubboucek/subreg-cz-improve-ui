@@ -10,6 +10,26 @@ const currentLang = (() => {
     return match ? match[1] : 'cz';
 })();
 
+const optionsPromise = new Promise((resolve) => {
+    const options = {
+        preferAdminLogin: false,
+        loginAutofocus: 'login',
+        silentRedAlerts: true,
+    };
+
+    chrome.storage.sync.get(options, function (options) {
+        resolve(options);
+    });
+});
+
+const getOption = async (key) => {
+    const options = await optionsPromise;
+    if (options.hasOwnProperty(key) === false)
+        throw new Error(`Option '${key}' doesn't exists.`);
+
+    return options[key];
+}
+
 const loginPopup = document.querySelector('#login_popup');
 if (loginPopup) {
     const switchAdmin = (isAdmin) => {
@@ -35,9 +55,7 @@ if (loginPopup) {
         });
     }
 
-    chrome.storage.sync.get({preferAdminLogin: false}, function (options) {
-        switchAdmin(options.preferAdminLogin === true);
-    });
+    getOption('preferAdminLogin').then(preferAdminLogin => switchAdmin(preferAdminLogin));
 
     loginPopup.querySelectorAll('input[type="text"], input[type="password"]').forEach((element) => {
         element.setAttribute('required', '');
@@ -54,29 +72,27 @@ if (loginPopup) {
         element.removeAttribute('onclick');
     });
 
-    const focusForm = () => {
-        chrome.storage.sync.get({loginAutofocus: 'login'}, function (options) {
-            let selector;
+    const focusForm = async () => {
+        const target = await getOption('loginAutofocus');
+        let selector;
 
-            const target = options.loginAutofocus;
-            switch (target) {
-                case 'admin':
-                    selector = 'form.active #login, form.active #sk_reseller';
-                    break;
-                case 'login':
-                    selector = 'form.active #login, form.active #sk_user';
-                    break;
-                case 'password':
-                    selector = 'form.active #heslo, form.active #sk_password';
-                    break;
-                default:
-                    throw `Invalid autofocus selector: ${target}`;
-            }
+        switch (target) {
+            case 'admin':
+                selector = 'form.active #login, form.active #sk_reseller';
+                break;
+            case 'login':
+                selector = 'form.active #login, form.active #sk_user';
+                break;
+            case 'password':
+                selector = 'form.active #heslo, form.active #sk_password';
+                break;
+            default:
+                throw `Invalid autofocus selector: ${target}`;
+        }
 
-            const element = loginPopup.querySelector(selector);
-            element.focus();
-            element.select();
-        });
+        const element = loginPopup.querySelector(selector);
+        element.focus();
+        element.select();
     }
 
     // Observe popup showing
@@ -141,8 +157,8 @@ if (menuLink) {
 }
 
 // Clean annoying promoted links and too yellings alerts
-chrome.storage.sync.get({silentRedAlerts: true}, function (options) {
-    const silentRedAlerts = options.silentRedAlerts;
+(async function () {
+    const silentRedAlerts = await getOption('silentRedAlerts');
     const menu = document.querySelector('#leftSide');
     document.querySelectorAll('strong.textRed').forEach((element) => {
         const inMenu = menu.contains(element);
@@ -166,7 +182,7 @@ chrome.storage.sync.get({silentRedAlerts: true}, function (options) {
             element.classList.remove('textRed');
         });
     }
-});
+})();
 
 // Fix invalid BIND export where domain FQN longer than 39 chars
 if(/^\/(?:cz|en)\/dns\/domain/.test(currentUrl.pathname) && currentUrl.searchParams.get('tab') === 'export' ) {
