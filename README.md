@@ -10,4 +10,8 @@ Install from Chrome Web Store: **Subreg.cz improve UI** (currently in-progress)
   - Required fields (no more accidently submit unfilled form)
   - Allow preferring Reseller access first
   - Support for password keychains with admin#username login format (sami like at API)
+- Left menu:
+  - Less yealling promo (remove red bold capitalised links)
+  - Add missing link to List of expiring domains
+   
   

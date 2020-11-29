@@ -3,8 +3,10 @@
  * @see https://developer.chrome.com/extensions/api_index
  */
 
+const currentUrl = new URL(location.toString());
+
 const currentLang = (() => {
-    const match = /^\/(cz|en)(?:\/|$)?/.exec(location.pathname);
+    const match = /^\/(cz|en)(?:\/|$)?/.exec(currentUrl.pathname);
     return match ? match[1] : 'cz';
 })();
 
@@ -105,10 +107,10 @@ if (loginPopup) {
     }
 
     // Admin login via admin#user login
-    loginPopup.querySelector('#user-tab').addEventListener('submit', (event) =>{
+    loginPopup.querySelector('#user-tab').addEventListener('submit', (event) => {
         const login = loginPopup.querySelector('#login').value;
         const match = /^(?<admin>.+)#(?<login>.+)$/.exec(login);
-        if(match === null) {
+        if (match === null) {
             return;
         }
 
@@ -119,5 +121,64 @@ if (loginPopup) {
         loginPopup.querySelector('#sk_password').value = loginPopup.querySelector('#heslo').value;
         loginPopup.querySelector('#admin-tab input[type="submit"], #admin-tab button').click();
     });
+}
+
+// Domain list without annoying default filter as default
+document.querySelectorAll('a[href^="/cz/domain/list"]').forEach((element) => {
+    const url = new URL(element.href);
+    const params = url.searchParams;
+    params.set('filtrslozka', '-');
+    params.set('pagelimit', '100');
+    element.href = url.toString();
+});
+
+// Append link to renew list to menu
+const menuLink = document.querySelector(`#leftSide ul.menuBox a[href="/${currentLang}/domain/bulk"]`);
+if (menuLink) {
+    const li = menuLink.parentElement;
+    const box = li.parentElement;
+    const renewList = li.cloneNode(true);
+    const renewLink = renewList.querySelector('a');
+    renewLink.href = `/${currentLang}/domain/renewlist/`;
+    renewLink.textContent = "Přehled domén k prodloužení";
+    box.insertBefore(renewList, li);
+}
+
+// Clean annoying promoted links and too yellings alerts
+chrome.storage.sync.get({silentRedAlerts: true}, function (options) {
+    const silentRedAlerts = options.silentRedAlerts;
+    const menu = document.querySelector('#leftSide');
+    document.querySelectorAll('strong.textRed').forEach((element) => {
+        const inMenu = menu.contains(element);
+        if (inMenu === false && silentRedAlerts === false) return;
+
+        const parent = element.parentElement;
+        while (element.firstChild) {
+            const ch = element.firstChild;
+            parent.insertBefore(ch, element);
+
+            if (inMenu) {
+                // Remove uppercasing
+                ch.textContent = ch.textContent.charAt(0).toUpperCase() + ch.textContent.slice(1).toLowerCase();
+            }
+        }
+        parent.removeChild(element);
+    });
+
+    if (silentRedAlerts) {
+        document.querySelectorAll('.textRed').forEach((element) => {
+            element.classList.remove('textRed');
+        });
+    }
+});
+
+// Fix invalid BIND export where domain FQN longer than 39 chars
+if(/^\/(?:cz|en)\/dns\/domain/.test(currentUrl.pathname) && currentUrl.searchParams.get('tab') === 'export' ) {
+    const bind = document.querySelector('pre');
+
+    bind.textContent = bind.textContent.replace(
+        /^(?<domain>\S{39,}\.)(?<type>A|AAAA|CNAME|MX|TXT|SPF|SRV|NS|PTR|TLSA|CAA|SSHFP)\t/gm,
+        '$1 $2\t'
+    );
 }
 
