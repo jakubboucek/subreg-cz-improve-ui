@@ -20,6 +20,7 @@ const getOption = (() => {
             loginAutofocus: 'login',
             silentRedAlerts: true,
             watchOrderStatus: false,
+            openNewOrderDetail: false
         };
 
         chrome.storage.sync.get(options, function (options) {
@@ -214,6 +215,19 @@ if (new RegExp(`^/(?:${langPattern})/dns/domain(?:/|\$)`).test(currentUrl.pathna
         /^(?<domain>\S{39,}\.)(?<type>A|AAAA|CNAME|MX|TXT|SPF|SRV|NS|PTR|TLSA|CAA|SSHFP)\t/gm,
         '$1 $2\t'
     );
+}
+
+if (new RegExp(`^/(?:${langPattern})/domain/status(?:/|\$)`).test(currentUrl.pathname)
+    && currentUrl.searchParams.has('neworder')) {
+    const orderId = currentUrl.searchParams.get('neworder');
+
+    getOption('openNewOrderDetail').then(openNewOrderDetail => {
+        if (openNewOrderDetail) {
+            const url = new URL(`https://subreg.cz/${currentLang}/domain/orderinfo/`);
+            url.searchParams.set('orderid', orderId);
+            location.assign(url.toString());
+        }
+    });
 }
 
 // Order watcher
