@@ -72,7 +72,29 @@ if (loginPopup) {
         element.removeAttribute('onclick');
     });
 
+    // Fix lost of URL to continue when user put invalid credentials
+    const nextInputs = loginPopup.querySelectorAll('input[name="next"]');
+
+    if (currentUrl.searchParams.has('_saved_next')) {
+        // Refresh lost value from URL parameter
+        const next = currentUrl.searchParams.get('_saved_next');
+        nextInputs.forEach(input => input.value = next);
+    } else if (nextInputs) {
+        // Store valid value to form action URL to restore it on next page (when user put invalid credential)
+        const next = nextInputs[0].value;
+        loginPopup.querySelectorAll('form').forEach(form => {
+            const url = new URL(form.action);
+            url.searchParams.set('_saved_next', next);
+            form.action = url.toString();
+        });
+        nextInputs.forEach(input => input.value = next);
+    }
+
     const focusForm = async () => {
+        if (loginPopup.style.display === 'none') {
+            return;
+        }
+
         const target = await getOption('loginAutofocus');
         let selector;
 
