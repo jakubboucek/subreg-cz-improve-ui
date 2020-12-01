@@ -1,0 +1,24 @@
+@keyframes blinker {
+    100% {
+        opacity: 0;
+    }
+}
+
+.recording {
+    color: red;
+    animation: blinker .5s cubic-bezier(0.65, 0.05, 0.36, 1) alternate infinite;
+    padding: 0 5px;
+}
+
+button.buttonSmall {
+    color: white;
+    padding: 0 3px;
+    text-decoration: none;
+    font-size: 11px;
+    width: auto;
+    height: 20px;
+    background: #242525 url(https://subreg.cz/img/layout/gradient-black.png) 0 0 repeat-x;
+    border-radius: 3px;
+    line-height: 0;
+    font-weight: bold;
+}

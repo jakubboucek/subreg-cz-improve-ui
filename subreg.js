@@ -5,30 +5,37 @@
 
 const currentUrl = new URL(location.toString());
 
+const langPattern = 'cz|en';
+
 const currentLang = (() => {
-    const match = /^\/(cz|en)(?:\/|$)?/.exec(currentUrl.pathname);
+    const match = new RegExp(`^/(${langPattern})(?:/|\$)`).exec(currentUrl.pathname);
     return match ? match[1] : 'cz';
 })();
 
-const optionsPromise = new Promise((resolve) => {
-    const options = {
-        preferAdminLogin: false,
-        loginAutofocus: 'login',
-        silentRedAlerts: true,
-    };
+const getOption = (() => {
+    // Async Preload all options
+    const optionsPromise = new Promise((resolve) => {
+        const options = {
+            preferAdminLogin: false,
+            loginAutofocus: 'login',
+            silentRedAlerts: true,
+            watchOrderStatus: false,
+        };
 
-    chrome.storage.sync.get(options, function (options) {
-        resolve(options);
+        chrome.storage.sync.get(options, function (options) {
+            resolve(options);
+        });
     });
-});
 
-const getOption = async (key) => {
-    const options = await optionsPromise;
-    if (options.hasOwnProperty(key) === false)
-        throw new Error(`Option '${key}' doesn't exists.`);
+    // provide async getter for option
+    return async (key) => {
+        const options = await optionsPromise;
+        if (options.hasOwnProperty(key) === false)
+            throw new Error(`Option '${key}' doesn't exists.`);
 
-    return options[key];
-}
+        return options[key];
+    }
+})();
 
 const loginPopup = document.querySelector('#login_popup');
 if (loginPopup) {
@@ -118,27 +125,19 @@ if (loginPopup) {
     }
 
     // Observe popup showing
-    new MutationObserver(() => {
-        if (loginPopup.style.display !== 'none') {
-            focusForm();
-        }
-    }).observe(loginPopup, {attributes: true, childList: false, subtree: false, attributeFilter: ["style"]});
+    new MutationObserver(focusForm)
+        .observe(loginPopup, {attributes: true, childList: false, subtree: false, attributeFilter: ["style"]});
 
     // Observe tab switching
-    new MutationObserver(() => {
-        if (loginPopup.style.display !== 'none') {
-            focusForm();
-        }
-    }).observe(loginPopup.querySelector('form'), {
-        attributes: true,
-        childList: false,
-        subtree: false,
-        attributeFilter: ["class"]
-    });
+    new MutationObserver(focusForm)
+        .observe(loginPopup.querySelector('form'), {
+            attributes: true,
+            childList: false,
+            subtree: false,
+            attributeFilter: ["class"]
+        });
 
-    if (loginPopup.style.display !== 'none') {
-        focusForm();
-    }
+    focusForm();
 
     // Admin login via admin#user login
     loginPopup.querySelector('#user-tab').addEventListener('submit', (event) => {
@@ -158,7 +157,7 @@ if (loginPopup) {
 }
 
 // Domain list without annoying default filter as default
-document.querySelectorAll('a[href^="/cz/domain/list"]').forEach((element) => {
+document.querySelectorAll(`a[href^="/${currentLang}/domain/list"]`).forEach((element) => {
     const url = new URL(element.href);
     const params = url.searchParams;
     params.set('filtrslozka', '-');
@@ -206,13 +205,127 @@ if (menuLink) {
     }
 })();
 
-// Fix invalid BIND export where domain FQN longer than 39 chars
-if(/^\/(?:cz|en)\/dns\/domain/.test(currentUrl.pathname) && currentUrl.searchParams.get('tab') === 'export' ) {
-    const bind = document.querySelector('pre');
+// Fix invalid BIND export where domain FQN longer than 40 chars
+if (new RegExp(`^/(?:${langPattern})/dns/domain(?:/|\$)`).test(currentUrl.pathname)
+    && currentUrl.searchParams.get('tab') === 'export') {
+    const bindExport = document.querySelector('pre');
 
-    bind.textContent = bind.textContent.replace(
+    bindExport.textContent = bindExport.textContent.replace(
         /^(?<domain>\S{39,}\.)(?<type>A|AAAA|CNAME|MX|TXT|SPF|SRV|NS|PTR|TLSA|CAA|SSHFP)\t/gm,
         '$1 $2\t'
     );
 }
 
+// Order watcher
+(function () {
+    const stopWords = ['Completed', 'Failed', 'Pending_Authorization', 'Wait_For_Payment', 'Wait_For_Documents'];
+
+    // Check if orderinfo page
+    if (new RegExp(`^/(?:${langPattern})/domain/orderinfo(?:/|\$)`).test(currentUrl.pathname) === false
+        || currentUrl.searchParams.has('orderid') === false) {
+        return;
+    }
+
+    // Search table of order info > row with order status
+    const target = document.querySelector('#content table tr:nth-child(7) > td:nth-child(2)');
+    if (target === null) return;
+
+    // Parse basic key of status value
+    const match = new RegExp('^[\\w_]+').exec(target.innerText.trim());
+    if (match === null || stopWords.includes(match[0])) return;
+
+    const fetchOrderStatus = async (orderId) => {
+        const url = new URL(`https://subreg.cz/${currentLang}/domain/status`);
+        url.searchParams.set('filtrid', orderId);
+        const response = await fetch(url.toString(), {credentials: 'same-origin'}).then(response => response.blob());
+
+        return new DOMParser()
+            .parseFromString(await response.text(), response.type)
+            .querySelector('table.listdomen tr:nth-child(2) td:nth-child(5)')
+            ?.textContent
+            .trim();
+    }
+
+    const orderId = currentUrl.searchParams.get('orderid');
+
+    // Move text & flat nodes to span "Label" - will be used as label
+    const label = document.createElement('span');
+    while (target.firstChild
+    && (target.firstChild.nodeType === Node.TEXT_NODE
+        || (target.firstChild.nodeType === Node.ELEMENT_NODE && target.firstChild.tagName === 'A'))) {
+        label.appendChild(target.firstChild);
+    }
+    target.firstChild ? target.insertBefore(label, target.firstChild) : target.appendChild(label);
+
+    const recording = document.createElement('span');
+    recording.textContent = '●';
+    recording.className = 'recording';
+
+    const appender = document.createElement('div');
+    appender.innerHTML = `<button class="button buttonSmall">Sledovat změnu stavu</button>`;
+    const a = appender.firstChild;
+
+    target.appendChild(appender);
+
+    let cancel;
+
+    const check = (orderId) => {
+        return new Promise((resolve, reject) => {
+            const interval = setInterval(() => {
+                try {
+                    label.textContent = "Načítám…";
+                    fetchOrderStatus(orderId)
+                        .then(status => {
+                            label.textContent = status;
+                            if (stopWords.includes(status)) {
+                                resolve(status);
+                            }
+                        })
+                        .catch((e) => {
+                            throw e;
+                        });
+                } catch (e) {
+                    reject();
+                }
+            }, 5000);
+            cancel = () => {
+                clearInterval(interval);
+                cancel = undefined;
+            };
+        });
+    };
+
+    let running = false;
+
+    const start = () => {
+        running = true;
+        target.insertBefore(recording, target.firstChild);
+        check(orderId)
+            .then((status) => {
+                label.textContent = "✅ " + status;
+                stop();
+                location.reload();
+            })
+            .catch((e) => {
+                stop();
+                label.textContent = 'Error during load: ' + e;
+            });
+    };
+
+    const stop = () => {
+        running = false;
+        target.removeChild(recording);
+        if (cancel) cancel();
+    };
+
+    const toggle = () => {
+        running ? stop() : start();
+    };
+
+    appender.addEventListener('click', toggle);
+    getOption('watchOrderStatus').then((watchOrderStatus) => {
+        if (watchOrderStatus) {
+            start();
+        }
+    })
+})();
