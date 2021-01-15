@@ -181,10 +181,12 @@ if (menuLink) {
 // Clean annoying promoted links and too yellings alerts
 (async function () {
     const silentRedAlerts = await getOption('silentRedAlerts');
+    if (silentRedAlerts === false) return;
+
     const menu = document.querySelector('#leftSide');
     document.querySelectorAll('strong.textRed').forEach((element) => {
         const inMenu = menu.contains(element);
-        if (inMenu === false && silentRedAlerts === false) return;
+        if (inMenu === false) return;
 
         const parent = element.parentElement;
         while (element.firstChild) {
@@ -199,11 +201,12 @@ if (menuLink) {
         parent.removeChild(element);
     });
 
-    if (silentRedAlerts) {
-        document.querySelectorAll('.textRed').forEach((element) => {
-            element.classList.remove('textRed');
-        });
-    }
+    document.querySelectorAll('.textRed').forEach((element) => {
+        element.classList.remove('textRed');
+    });
+    document.querySelectorAll('#content>.infoTable td').forEach((element) => {
+        element.style.removeProperty('color');
+    });
 })();
 
 // Fix invalid BIND export where domain FQN longer than 40 chars
