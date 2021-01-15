@@ -241,7 +241,13 @@ if (new RegExp(`^/(?:${langPattern})/domain/status(?:/|\$)`).test(currentUrl.pat
     }
 
     // Search table of order info > row with order status
-    const target = document.querySelector('#content table tr:nth-child(7) > td:nth-child(2)');
+    let target = null;
+    document.querySelectorAll('#content table:nth-child(1) tr').forEach((tr) => {
+        // Search Status row
+        if (target === null && tr.querySelector('td:first-child')?.innerText === 'Stav:') {
+            target = tr.querySelector('td:nth-child(2)');
+        }
+    });
     if (target === null) return;
 
     // Parse basic key of status value
